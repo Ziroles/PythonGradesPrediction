@@ -6,11 +6,12 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 import numpy as np
 import random
+
 # Charger le modèle de langue en anglais
 nlp = spacy.load("en_core_web_sm")
 tab = []
 # Exemple de données (remplacez cela par vos propres données)
-with open('datafrotrain.json') as fichier:
+with open('../data/Data.json') as fichier:
     data = json.load(fichier)
 
 
@@ -26,8 +27,9 @@ avis = avis_negatifs + avis_positifs
 
 
 tab.extend((obj['id'], obj['review_text'], obj['label']) for obj in avis)
-tab = tab[:10000]
+
 random.shuffle(tab)
+tab = tab[:10000]
 print("on train sur", len(tab))
 id , reviews, labels = zip(*tab)
 
@@ -36,22 +38,31 @@ processed_reviews = [str(doc).lower() for doc in nlp.pipe(reviews)]
 print("nb positif label",labels.count('positif'),"nb négatif label",labels.count('negatif'))
 train_reviews, test_reviews, train_labels, test_labels = train_test_split(processed_reviews, labels, test_size=0.2, random_state=42)
 
+# tests = [
+#     [[[C, kernel, degree, 
+#         gamma for gamma in ["auto", "scale"] if kernel in ["rbf", "poly", "sigmoid"]] 
+#       for degree in range(2, 10) if kernel == "poly"] 
+#       for kernel in ['linear', 'poly', 'rbf', 'sigmoid', 'precomputed']] 
+#       for C in [0.001, 0.01, 0.1, 1, 10, 100, 1000]
+# ]
 
 vectorizer = TfidfVectorizer()
 X_train = vectorizer.fit_transform(train_reviews)
 X_test = vectorizer.transform(test_reviews)
 
+for test in tests:
+    print(test)
+    svm_model = SVC(C=test[0], kernel=test[1], degree=test[2], gamma=test[3])
 
-svm_model = SVC(kernel='linear')
+    svm_model.fit(X_train, train_labels)
+    predictions = svm_model.predict(X_test)
+    unique_classes, counts = np.unique(predictions, return_counts=True)
+    class_counts = dict(zip(unique_classes, counts))
+    print("Nombre d'occurrences de chaque classe dans les prédictions :", class_counts)
 
-svm_model.fit(X_train, train_labels)
-predictions = svm_model.predict(X_test)
-unique_classes, counts = np.unique(predictions, return_counts=True)
-class_counts = dict(zip(unique_classes, counts))
-print("Nombre d'occurrences de chaque classe dans les prédictions :", class_counts)
+    accuracy = accuracy_score(test_labels, predictions)
+    print("Précision du modèle :", accuracy)
 
-accuracy = accuracy_score(test_labels, predictions)
-print("Précision du modèle :", accuracy)
 
 
 test = svm_model.predict(vectorizer.transform(["I love this place!"]))
